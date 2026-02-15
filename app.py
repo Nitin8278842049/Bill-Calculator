@@ -1,7 +1,7 @@
 import streamlit as st
 import base64
 
-st.set_page_config(page_title="Tata Power Bill Calculator/nMMG", layout="centered")
+st.set_page_config(page_title="Tata Power Bill Calculator", layout="centered")
 
 # ---------- LOAD LOGO ----------
 def get_base64_of_bin_file(bin_file):
