@@ -1,7 +1,7 @@
 import streamlit as st
 import base64
 
-st.set_page_config(page_title="Tata Power Bill Calculator", layout="centered")
+st.set_page_config(page_title="Tata Power Bill Calculator/nMMG", layout="centered")
 
 # ---------- LOAD LOGO ----------
 def get_base64_of_bin_file(bin_file):
@@ -130,7 +130,7 @@ st.markdown('<div class="card">', unsafe_allow_html=True)
 
 network = st.selectbox(
     "Network Type",
-    ["Welcome (AEML Network - 5.36% Loss)", "Direct (Tata Power Network - 0% Loss)"]
+    ["Welcome (AEML Network)", "Direct (Tata Power Network)"]
 )
 
 mu = st.number_input("Metered Units (Total MU)", min_value=0.0, step=1.0)
