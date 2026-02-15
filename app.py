@@ -103,7 +103,7 @@ st.markdown('<div class="card">', unsafe_allow_html=True)
 
 network = st.selectbox(
     "Network Type",
-    ["Welcome (AEML Network - 5.36% Loss)", "Direct (Tata Power Network - 0% Loss)"]
+    ["Welcome (AEML Network)", "Direct (Tata Power Network)"]
 )
 
 mu = st.number_input("Metered Units (Total MU)", min_value=0.0, step=1.0)
