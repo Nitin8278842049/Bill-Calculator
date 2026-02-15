@@ -57,14 +57,20 @@ st.markdown("""
     font-size:15px;
 }
 
-/* Total */
+/* Green rebate */
+.green{
+    color:#1a7f37;
+    font-weight:600;
+}
+
+/* Total amount */
 .total{
-    background:#fff4f4;
-    padding:15px;
+    background:#f2f2f2;
+    padding:16px;
     border-radius:8px;
-    font-size:22px;
-    font-weight:700;
-    color:#d9534f;
+    font-size:24px;
+    font-weight:800;
+    color:#000000;
     text-align:right;
 }
 
@@ -94,7 +100,7 @@ st.markdown('<div class="card">', unsafe_allow_html=True)
 
 network = st.selectbox(
     "Network Type",
-    ["Welcome (AEML Network)", "Direct (Tata Power Network)"]
+    ["Welcome (AEML Network - 5.36% Loss)", "Direct (Tata Power Network - 0% Loss)"]
 )
 
 mu = st.number_input("Metered Units (Total MU)", min_value=0.0, step=1.0)
@@ -109,6 +115,7 @@ if calculate:
 
     is_welcome = "Welcome" in network
 
+    # BU
     if is_welcome:
         bu = round(mu * 1.0536)
         note_bu = f"Calculation: {mu} MU × 1.0536 (Wheeling Loss) = {bu} BU"
@@ -116,12 +123,14 @@ if calculate:
         bu = mu
         note_bu = f"Direct Network: BU = MU = {mu}"
 
+    # Slabs
     s1 = min(bu, 100) * 2.00
     s2 = min(max(bu - 100, 0), 200) * 5.20
     s3 = min(max(bu - 300, 0), 200) * 10.79
     s4 = max(bu - 500, 0) * 11.79
     total_energy = s1 + s2 + s3 + s4
 
+    # Charges
     wheeling = mu * 2.93
     solar_rebate = su * 0.50
 
@@ -154,7 +163,7 @@ if calculate:
 
     st.markdown('<div class="section">Step 3: Other Charges</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="row"><span>Wheeling Charges</span><span>₹{wheeling:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="row"><span>Solar Rebate</span><span>-₹{solar_rebate:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>Solar Rebate</span><span class="green">-₹{solar_rebate:.2f}</span></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="row"><span>Fixed Charges</span><span>₹{fixed:.2f}</span></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="row"><span>Electricity Duty (16%)</span><span>₹{duty:.2f}</span></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="row"><span>TOSE</span><span>₹{tose:.2f}</span></div>', unsafe_allow_html=True)
