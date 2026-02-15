@@ -3,7 +3,7 @@ import base64
 
 st.set_page_config(page_title="Tata Power Bill Calculator", layout="centered")
 
-# ---------- FUNCTION TO LOAD LOGO ----------
+# ---------- LOAD LOGO ----------
 def get_base64_of_bin_file(bin_file):
     with open(bin_file, 'rb') as f:
         data = f.read()
@@ -20,9 +20,21 @@ st.markdown("""
 }
 
 .block-container {
-    padding-top: 2rem;
+    padding-top: 1rem;
     padding-bottom: 2rem;
     max-width: 750px;
+}
+
+/* Logo */
+.logo-container{
+    text-align:center;
+    margin-top:30px;
+    margin-bottom:10px;
+}
+.logo-container img{
+    max-width:180px;
+    height:auto;
+    object-fit:contain;
 }
 
 /* Header */
@@ -57,7 +69,7 @@ st.markdown("""
     margin-top:20px;
 }
 
-/* Result rows */
+/* Rows */
 .row{
     display:flex;
     justify-content:space-between;
@@ -66,7 +78,7 @@ st.markdown("""
     font-size:15px;
 }
 
-/* Green rebate row */
+/* Solar rebate green */
 .green{
     color:#1a7f37;
     font-weight:600;
@@ -75,7 +87,7 @@ st.markdown("""
     color:#1a7f37;
 }
 
-/* Total amount */
+/* Total */
 .total{
     background:#f2f2f2;
     padding:16px;
@@ -103,11 +115,12 @@ div.stButton > button:hover {
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- HEADER WITH LOGO ---------------- #
+# ---------------- HEADER ---------------- #
 st.markdown(f"""
-<div style="text-align:center;">
-    <img src="data:image/png;base64,{logo_base64}" width="170">
+<div class="logo-container">
+    <img src="data:image/png;base64,{logo_base64}">
 </div>
+
 <div class="title">TATA POWER BILL CALCULATOR</div>
 <div class="subtitle">Mumbai Region Official Tariff</div>
 """, unsafe_allow_html=True)
@@ -132,6 +145,7 @@ if calculate:
 
     is_welcome = "Welcome" in network
 
+    # BU
     if is_welcome:
         bu = round(mu * 1.0536)
         note_bu = f"Calculation: {mu} MU × 1.0536 (Wheeling Loss) = {bu} BU"
@@ -139,12 +153,14 @@ if calculate:
         bu = mu
         note_bu = f"Direct Network: BU = MU = {mu}"
 
+    # Slabs
     s1 = min(bu, 100) * 2.00
     s2 = min(max(bu - 100, 0), 200) * 5.20
     s3 = min(max(bu - 300, 0), 200) * 10.79
     s4 = max(bu - 500, 0) * 11.79
     total_energy = s1 + s2 + s3 + s4
 
+    # Charges
     wheeling = mu * 2.93
     solar_rebate = su * 0.50
 
