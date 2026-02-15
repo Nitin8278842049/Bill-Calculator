@@ -57,10 +57,13 @@ st.markdown("""
     font-size:15px;
 }
 
-/* Green rebate */
+/* Green rebate row */
 .green{
     color:#1a7f37;
     font-weight:600;
+}
+.green span{
+    color:#1a7f37;
 }
 
 /* Total amount */
@@ -163,7 +166,10 @@ if calculate:
 
     st.markdown('<div class="section">Step 3: Other Charges</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="row"><span>Wheeling Charges</span><span>₹{wheeling:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="row"><span>Solar Rebate</span><span class="green">-₹{solar_rebate:.2f}</span></div>', unsafe_allow_html=True)
+
+    # FULL GREEN ROW
+    st.markdown(f'<div class="row green"><span>Solar Rebate</span><span>-₹{solar_rebate:.2f}</span></div>', unsafe_allow_html=True)
+
     st.markdown(f'<div class="row"><span>Fixed Charges</span><span>₹{fixed:.2f}</span></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="row"><span>Electricity Duty (16%)</span><span>₹{duty:.2f}</span></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="row"><span>TOSE</span><span>₹{tose:.2f}</span></div>', unsafe_allow_html=True)
