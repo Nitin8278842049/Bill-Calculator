@@ -10,96 +10,94 @@ def get_base64_of_bin_file(bin_file):
 
 logo_base64 = get_base64_of_bin_file("logo.png")
 
-# ---------------- CSS ---------------- #
+# ---------------- CSS (Mobile Friendly) ---------------- #
 st.markdown("""
 <style>
 
-/* Page Border */
+/* Main Page Border */
 .main-container {
     border: 2px solid #005aa2;
-    padding: 20px;
-    border-radius: 8px;
+    padding: 14px;
+    border-radius: 10px;
 }
 
-/* Background */
-.stApp {
-    background-color: white;
-}
-
+/* Mobile width optimization */
 .block-container {
-    max-width: 760px;
-    padding-top: 10px;
+    max-width: 520px;
+    padding-top: 5px;
 }
 
 /* Logo */
 .logo-container {
     text-align: center;
-    margin-bottom: 5px;
+    margin-bottom: 0px;
 }
 .logo-container img {
-    max-width: 160px;
+    max-width: 130px;
 }
 
-/* Title */
+/* Titles */
 .title {
     text-align: center;
     color: #005aa2;
-    font-size: 28px;
+    font-size: 22px;
     font-weight: 800;
+    margin-bottom: 0;
 }
 .subtitle {
     text-align: center;
+    font-size: 12px;
+    margin-bottom: 10px;
     color: #555;
-    font-size: 14px;
-    margin-bottom: 15px;
 }
 
 /* Card */
 .card {
     background: white;
-    padding: 18px;
-    border-radius: 6px;
+    padding: 12px;
+    border-radius: 8px;
     border: 1px solid #dcdcdc;
-    margin-bottom: 15px;
+    margin-bottom: 10px;
 }
 
-/* Section */
+/* Section Headers */
 .section {
     background: #eef7ff;
-    padding: 8px;
+    padding: 6px;
     border-radius: 4px;
     font-weight: 700;
+    font-size: 13px;
     color: #005aa2;
-    margin-top: 10px;
+    margin-top: 8px;
     border: 1px solid #d0e7ff;
 }
 
-/* Rows with Borders */
+/* Rows */
 .row {
     display: flex;
     justify-content: space-between;
-    padding: 8px;
-    font-size: 14px;
+    padding: 7px;
+    font-size: 13px;
     border: 1px solid #e6e6e6;
-    margin-top: 4px;
+    margin-top: 3px;
 }
 
 /* Calculation text */
 .calc {
-    font-size: 12px;
+    font-size: 11px;
     color: #666;
-    margin-left: 6px;
-    margin-bottom: 6px;
+    margin-left: 4px;
+    margin-bottom: 4px;
 }
 
 /* Button */
 div.stButton > button {
     background-color: #005aa2;
     color: white;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 700;
-    border-radius: 4px;
-    height: 45px;
+    border-radius: 6px;
+    height: 42px;
     width: 100%;
     border: none;
 }
@@ -112,24 +110,29 @@ div.stButton > button {
 
 /* Net Bill */
 .total {
-    font-size: 22px;
+    font-size: 18px;
     font-weight: 800;
     color: black;
     text-align: right;
-    padding-top: 10px;
+    padding-top: 8px;
+}
+
+/* Reduce input spacing for mobile */
+div[data-baseweb="input"] {
+    margin-bottom: 6px;
 }
 
 label {
     font-weight: 600 !important;
+    font-size: 13px !important;
 }
 
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- PAGE WRAPPER ---------------- #
+# ---------------- PAGE ---------------- #
 st.markdown('<div class="main-container">', unsafe_allow_html=True)
 
-# ---------------- HEADER ---------------- #
 st.markdown(f"""
 <div class="logo-container">
     <img src="data:image/png;base64,{logo_base64}">
@@ -138,7 +141,7 @@ st.markdown(f"""
 <div class="subtitle">Mumbai Region Official Tariff</div>
 """, unsafe_allow_html=True)
 
-# ---------------- INPUT CARD ---------------- #
+# ---------------- INPUTS ---------------- #
 st.markdown('<div class="card">', unsafe_allow_html=True)
 
 network = st.selectbox(
@@ -146,31 +149,25 @@ network = st.selectbox(
     ["Welcome (AEML Network - 5.36% Loss)", "Direct (Tata Power Network)"]
 )
 
-mu = st.number_input(
-    "Metered Units (Total MU)",
-    min_value=0,
-    step=1,
-    value=None,
-    placeholder="Enter Metered Units"
-)
-
-su = st.number_input(
-    "Solar Hour Units (Direct Meter Reading)",
-    min_value=0,
-    step=1,
-    value=None,
-    placeholder="Enter Solar Units"
-)
+mu_text = st.text_input("Metered Units (MU)", placeholder="Enter Meter Units")
+su_text = st.text_input("Solar Units", placeholder="Enter Solar Units")
 
 calculate = st.button("Calculate")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# ---------------- CALCULATIONS ---------------- #
+# ---------------- CALCULATION ---------------- #
 if calculate:
 
-    if mu is None or su is None:
-        st.error("Please enter Metered Units and Solar Units.")
+    try:
+        mu = float(mu_text)
+        su = float(su_text)
+    except:
+        st.error("Please enter valid numeric values.")
+        st.stop()
+
+    if mu < 0 or su < 0:
+        st.error("Units cannot be negative.")
         st.stop()
 
     if su > mu:
@@ -181,12 +178,11 @@ if calculate:
 
     if is_welcome:
         bu = mu * 1.0536
-        bu_calc = f"{mu} × 1.0536 = {round(bu)} BU"
+        bu_calc = f"Calculation: {mu} MU × 1.0536 (Wheeling Loss) = {round(bu)} BU"
     else:
         bu = mu
-        bu_calc = f"BU = {round(bu)}"
+        bu_calc = f"Calculation: Direct Network → BU = {round(bu)}"
 
-    # Slabs
     s1_units = min(bu, 100)
     s2_units = min(max(bu - 100, 0), 200)
     s3_units = min(max(bu - 300, 0), 200)
@@ -227,35 +223,34 @@ if calculate:
 
     st.markdown('<div class="section">Step 2 : Energy Charges</div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="row"><span>0 - 100 Slab @ ₹2.00</span><span>₹{s1:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">{round(s1_units)} × 2.00</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>0 – 100 Units (@ ₹2.00)</span><span>₹{s1:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="calc">{round(s1_units)} BU × ₹2.00</div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="row"><span>101 - 300 Slab @ ₹5.20</span><span>₹{s2:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">{round(s2_units)} × 5.20</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>101 – 300 Units (@ ₹5.20)</span><span>₹{s2:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="calc">{round(s2_units)} BU × ₹5.20</div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="row"><span>301 - 500 Slab @ ₹10.79</span><span>₹{s3:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">{round(s3_units)} × 10.79</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>301 – 500 Units (@ ₹10.79)</span><span>₹{s3:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="calc">{round(s3_units)} BU × ₹10.79</div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="row"><span>Above 500 Slab @ ₹11.79</span><span>₹{s4:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">{round(s4_units)} × 11.79</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>Above 500 Units (@ ₹11.79)</span><span>₹{s4:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="calc">{round(s4_units)} BU × ₹11.79</div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="row"><strong>Total Energy</strong><strong>₹{total_energy:.2f}</strong></div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="section">Step 3 : Other Charges & Rebates</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section">Step 3 : Other Charges</div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="row"><span>Wheeling Charges</span><span>₹{wheeling:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">{mu} × 2.93</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="calc">{mu} MU × ₹2.93</div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="row green"><span>Solar Rebate</span><span>-₹{solar_rebate:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">{su} × 0.50</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="calc">{su} MU × ₹0.50</div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="row"><span>Fixed Charges</span><span>₹{fixed:.2f}</span></div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="row"><span>Electricity Duty (16%)</span><span>₹{duty:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">{round(duty_base)} × 16%</div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="row"><span>TOSE</span><span>₹{tose:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">{round(bu)} × 0.3594</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>TOSE (@ ₹0.3594 / BU)</span><span>₹{tose:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="calc">{round(bu)} BU × ₹0.3594</div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="total">Net Bill Amount : ₹{round(total):,}</div>', unsafe_allow_html=True)
 
