@@ -13,13 +13,62 @@ logo_base64 = get_base64_of_bin_file("logo.png")
 # ---------------- CSS ---------------- #
 st.markdown("""
 <style>
+
+/* Page Border */
 .main-container {
     border: 2px solid #005aa2;
     padding: 20px;
     border-radius: 8px;
 }
-.stApp { background-color: white; }
-.block-container { max-width: 760px; padding-top: 10px; }
+
+.stApp {
+    background-color: white;
+}
+
+.block-container {
+    max-width: 760px;
+    padding-top: 10px;
+}
+
+.logo-container {
+    text-align: center;
+    margin-bottom: 5px;
+}
+.logo-container img {
+    max-width: 160px;
+}
+
+.title {
+    text-align: center;
+    color: #005aa2;
+    font-size: 28px;
+    font-weight: 800;
+}
+.subtitle {
+    text-align: center;
+    color: #555;
+    font-size: 14px;
+    margin-bottom: 15px;
+}
+
+.card {
+    background: white;
+    padding: 18px;
+    border-radius: 6px;
+    border: 1px solid #dcdcdc;
+    margin-bottom: 15px;
+}
+
+.section {
+    background: #eef7ff;
+    padding: 8px;
+    border-radius: 4px;
+    font-weight: 700;
+    color: #005aa2;
+    margin-top: 10px;
+    border: 1px solid #d0e7ff;
+}
+
 .row {
     display: flex;
     justify-content: space-between;
@@ -28,57 +77,83 @@ st.markdown("""
     border: 1px solid #e6e6e6;
     margin-top: 4px;
 }
+
 .calc {
     font-size: 12px;
     color: #666;
     margin-left: 6px;
+    margin-bottom: 6px;
 }
-.total {
-    font-size: 22px;
-    font-weight: 800;
-    text-align: right;
-}
+
 div.stButton > button {
     background-color: #005aa2;
     color: white;
     font-size: 16px;
     font-weight: 700;
+    border-radius: 4px;
     height: 45px;
     width: 100%;
+    border: none;
 }
+
+.green {
+    color: #1a7f37;
+    font-weight: 600;
+}
+
+.total {
+    font-size: 22px;
+    font-weight: 800;
+    color: black;
+    text-align: right;
+    padding-top: 10px;
+}
+
+label {
+    font-weight: 600 !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
+# ---------------- PAGE WRAPPER ---------------- #
 st.markdown('<div class="main-container">', unsafe_allow_html=True)
+
+# ---------------- HEADER ---------------- #
+st.markdown(f"""
+<div class="logo-container">
+    <img src="data:image/png;base64,{logo_base64}">
+</div>
+<div class="title">TATA POWER BILL CALCULATOR</div>
+<div class="subtitle">Mumbai Region Official Tariff</div>
+""", unsafe_allow_html=True)
+
+# ---------------- INPUT CARD ---------------- #
+st.markdown('<div class="card">', unsafe_allow_html=True)
 
 network = st.selectbox(
     "Network Type",
     ["Welcome (AEML Network)", "Direct (Tata Power Network)"]
 )
 
-mu_text = st.text_input("Metered Units (MU)", placeholder="Enter Meter Units")
-solar_text = st.text_input("Solar Units (BU)", placeholder="Enter Solar Units")
+mu_text = st.text_input("Metered Units (Total MU)", placeholder="Enter Metered Units")
+su_text = st.text_input("Solar Units (BU)", placeholder="Enter Solar Units")
 
 calculate = st.button("Calculate")
 
-# ---------------- SAFE INPUT HANDLING ---------------- #
+st.markdown('</div>', unsafe_allow_html=True)
+
+# ---------------- CALCULATIONS ---------------- #
 if calculate:
-
-    mu_text = mu_text.strip()
-    solar_text = solar_text.strip()
-
-    if not mu_text or not solar_text:
-        st.error("Please enter Meter Units and Solar Units.")
-        st.stop()
 
     try:
         mu = float(mu_text)
-        solar_units = float(solar_text)
+        su = float(su_text)
     except:
-        st.error("Only numeric values are allowed.")
+        st.error("Please enter valid numeric values.")
         st.stop()
 
-    if mu < 0 or solar_units < 0:
+    if mu < 0 or su < 0:
         st.error("Units cannot be negative.")
         st.stop()
 
@@ -86,20 +161,20 @@ if calculate:
 
     if is_welcome:
         bu = mu * 1.0536
+        bu_calc = f"Calculation : BU = {mu} × 1.0536 = {round(bu)} BU"
     else:
         bu = mu
+        bu_calc = f"Calculation : BU = {round(bu)} BU"
 
-    if solar_units > bu:
-        st.error("Solar Units cannot exceed Billed Units.")
+    if su > bu:
+        st.error("Solar units cannot exceed Billed Units (BU).")
         st.stop()
 
-    net_units = bu - solar_units
-
     # Slabs
-    s1_units = min(net_units, 100)
-    s2_units = min(max(net_units - 100, 0), 200)
-    s3_units = min(max(net_units - 300, 0), 200)
-    s4_units = max(net_units - 500, 0)
+    s1_units = min(bu, 100)
+    s2_units = min(max(bu - 100, 0), 200)
+    s3_units = min(max(bu - 300, 0), 200)
+    s4_units = max(bu - 500, 0)
 
     r1, r2, r3, r4 = 2.00, 5.20, 10.79, 11.79
 
@@ -111,21 +186,63 @@ if calculate:
     total_energy = s1 + s2 + s3 + s4
 
     wheeling = mu * 2.93
-    fixed = 135
-    tose = net_units * 0.3594
+    solar_rebate = su * 0.50   # ✅ BU Based
 
-    duty_base = total_energy + wheeling + fixed + tose
+    if bu <= 100:
+        fixed = 90
+    elif bu <= 500:
+        fixed = 135
+    else:
+        fixed = 160
+
+    duty_base = max(total_energy + wheeling + fixed - solar_rebate, 0)
     duty = duty_base * 0.16
 
-    total = total_energy + wheeling + fixed + tose + duty
+    tose = bu * 0.3594
 
-    st.markdown(f'<div class="row"><span>BU</span><span>{round(bu)}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">Calculation : {mu} × Loss Factor = {round(bu)}</div>', unsafe_allow_html=True)
+    total = total_energy + wheeling + fixed + duty + tose - solar_rebate
 
-    st.markdown(f'<div class="row"><span>Energy Charges</span><span>₹{total_energy:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="row"><span>TOSE</span><span>₹{tose:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="row"><span>Electricity Duty</span><span>₹{duty:.2f}</span></div>', unsafe_allow_html=True)
+    # ---------------- RESULTS ---------------- #
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+
+    st.markdown('<div class="section">Step 1 : Unit Conversion</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>Billed Units (BU)</span><span><b>{round(bu)}</b></span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="calc">{bu_calc}</div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="section">Step 2 : Energy Charges</div>', unsafe_allow_html=True)
+
+    st.markdown(f'<div class="row"><span>0 – 100 Units (@ ₹2.00)</span><span>₹{s1:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="calc">Calculation : {round(s1_units)} × 2.00 = ₹{s1:.2f}</div>', unsafe_allow_html=True)
+
+    st.markdown(f'<div class="row"><span>101 – 300 Units (@ ₹5.20)</span><span>₹{s2:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="calc">Calculation : {round(s2_units)} × 5.20 = ₹{s2:.2f}</div>', unsafe_allow_html=True)
+
+    st.markdown(f'<div class="row"><span>301 – 500 Units (@ ₹10.79)</span><span>₹{s3:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="calc">Calculation : {round(s3_units)} × 10.79 = ₹{s3:.2f}</div>', unsafe_allow_html=True)
+
+    st.markdown(f'<div class="row"><span>Above 500 Units (@ ₹11.79)</span><span>₹{s4:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="calc">Calculation : {round(s4_units)} × 11.79 = ₹{s4:.2f}</div>', unsafe_allow_html=True)
+
+    st.markdown(f'<div class="row"><strong>Total Energy</strong><strong>₹{total_energy:.2f}</strong></div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="section">Step 3 : Other Charges & Rebates</div>', unsafe_allow_html=True)
+
+    st.markdown(f'<div class="row"><span>Wheeling Charges</span><span>₹{wheeling:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="calc">Calculation : {mu} × 2.93 = ₹{wheeling:.2f}</div>', unsafe_allow_html=True)
+
+    st.markdown(f'<div class="row green"><span>Solar Rebate</span><span>-₹{solar_rebate:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="calc">Calculation : {su} BU × 0.50 = ₹{solar_rebate:.2f}</div>', unsafe_allow_html=True)
+
+    st.markdown(f'<div class="row"><span>Fixed Charges</span><span>₹{fixed:.2f}</span></div>', unsafe_allow_html=True)
+
+    st.markdown(f'<div class="row"><span>Electricity Duty (16%)</span><span>₹{duty:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="calc">Calculation : ({total_energy:.2f} + {wheeling:.2f} + {fixed:.2f} - {solar_rebate:.2f}) × 16% = ₹{duty:.2f}</div>', unsafe_allow_html=True)
+
+    st.markdown(f'<div class="row"><span>TOSE (@ ₹0.3594 / BU)</span><span>₹{tose:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="calc">Calculation : {round(bu)} × 0.3594 = ₹{tose:.2f}</div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="total">Net Bill Amount : ₹{round(total):,}</div>', unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)
