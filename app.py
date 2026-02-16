@@ -138,6 +138,7 @@ network = st.selectbox(
 
 mu_text = st.text_input("Metered Units (Total MU)", placeholder="Enter Metered Units")
 su_text = st.text_input("Solar Units (BU)", placeholder="Enter Solar Units")
+load_text = st.text_input("Sanctioned Load (kW)", placeholder="Enter Load")
 
 calculate = st.button("Calculate")
 
@@ -149,28 +150,31 @@ if calculate:
     try:
         mu = float(mu_text)
         su = float(su_text)
+        load_kw = float(load_text)
     except:
         st.error("Please enter valid numeric values.")
         st.stop()
 
-    if mu < 0 or su < 0:
-        st.error("Units cannot be negative.")
+    if mu < 0 or su < 0 or load_kw < 0:
+        st.error("Values cannot be negative.")
         st.stop()
 
     is_welcome = "Welcome" in network
 
     if is_welcome:
-        bu = mu * 1.0536
-        bu_calc = f"Calculation : BU = {mu} × 1.0536 = {round(bu)} BU"
+        bu = mu * 1.05785   # ✅ Updated Loss Factor
+        bu_calc = f"Calculation : BU = {mu} × 1.05785 = {round(bu)} BU"
+        wheeling_rate = 2.93
     else:
         bu = mu
         bu_calc = f"Calculation : BU = {round(bu)} BU"
+        wheeling_rate = 2.76   # ✅ Direct Consumer Rate
 
     if su > bu:
         st.error("Solar units cannot exceed Billed Units (BU).")
         st.stop()
 
-    # Slabs
+    # Slabs (unchanged)
     s1_units = min(bu, 100)
     s2_units = min(max(bu - 100, 0), 200)
     s3_units = min(max(bu - 300, 0), 200)
@@ -185,8 +189,8 @@ if calculate:
 
     total_energy = s1 + s2 + s3 + s4
 
-    wheeling = mu * 2.93
-    solar_rebate = su * 0.50   # ✅ BU Based
+    wheeling = mu * wheeling_rate
+    solar_rebate = su * 0.50
 
     if bu <= 100:
         fixed = 90
@@ -195,12 +199,15 @@ if calculate:
     else:
         fixed = 160
 
-    duty_base = max(total_energy + wheeling + fixed - solar_rebate, 0)
+    # ✅ Additional Fixed Charges Logic
+    additional_fixed = 250 if load_kw > 10 else 0
+
+    duty_base = max(total_energy + wheeling + fixed + additional_fixed - solar_rebate, 0)
     duty = duty_base * 0.16
 
     tose = bu * 0.3594
 
-    total = total_energy + wheeling + fixed + duty + tose - solar_rebate
+    total = total_energy + wheeling + fixed + additional_fixed + duty + tose - solar_rebate
 
     # ---------------- RESULTS ---------------- #
     st.markdown('<div class="card">', unsafe_allow_html=True)
@@ -209,37 +216,18 @@ if calculate:
     st.markdown(f'<div class="row"><span>Billed Units (BU)</span><span><b>{round(bu)}</b></span></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="calc">{bu_calc}</div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="section">Step 2 : Energy Charges</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section">Step 2 : Charges</div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="row"><span>0 – 100 Units (@ ₹2.00)</span><span>₹{s1:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">Calculation : {round(s1_units)} × 2.00 = ₹{s1:.2f}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>Energy Charges</span><span>₹{total_energy:.2f}</span></div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="row"><span>101 – 300 Units (@ ₹5.20)</span><span>₹{s2:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">Calculation : {round(s2_units)} × 5.20 = ₹{s2:.2f}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>Wheeling Charges (@ ₹{wheeling_rate})</span><span>₹{wheeling:.2f}</span></div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="row"><span>301 – 500 Units (@ ₹10.79)</span><span>₹{s3:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">Calculation : {round(s3_units)} × 10.79 = ₹{s3:.2f}</div>', unsafe_allow_html=True)
-
-    st.markdown(f'<div class="row"><span>Above 500 Units (@ ₹11.79)</span><span>₹{s4:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">Calculation : {round(s4_units)} × 11.79 = ₹{s4:.2f}</div>', unsafe_allow_html=True)
-
-    st.markdown(f'<div class="row"><strong>Total Energy</strong><strong>₹{total_energy:.2f}</strong></div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="section">Step 3 : Other Charges & Rebates</div>', unsafe_allow_html=True)
-
-    st.markdown(f'<div class="row"><span>Wheeling Charges</span><span>₹{wheeling:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">Calculation : {mu} × 2.93 = ₹{wheeling:.2f}</div>', unsafe_allow_html=True)
-
-    st.markdown(f'<div class="row green"><span>Solar Rebate</span><span>-₹{solar_rebate:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">Calculation : {su} BU × 0.50 = ₹{solar_rebate:.2f}</div>', unsafe_allow_html=True)
-
-    st.markdown(f'<div class="row"><span>Fixed Charges</span><span>₹{fixed:.2f}</span></div>', unsafe_allow_html=True)
+    if additional_fixed:
+        st.markdown(f'<div class="row"><span>Additional Fixed Charges</span><span>₹{additional_fixed:.2f}</span></div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="row"><span>Electricity Duty (16%)</span><span>₹{duty:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">Calculation : ({total_energy:.2f} + {wheeling:.2f} + {fixed:.2f} - {solar_rebate:.2f}) × 16% = ₹{duty:.2f}</div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="row"><span>TOSE (@ ₹0.3594 / BU)</span><span>₹{tose:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">Calculation : {round(bu)} × 0.3594 = ₹{tose:.2f}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>TOSE</span><span>₹{tose:.2f}</span></div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="total">Net Bill Amount : ₹{round(total):,}</div>', unsafe_allow_html=True)
 
