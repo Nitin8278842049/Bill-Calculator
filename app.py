@@ -15,17 +15,12 @@ logo_base64 = get_base64_of_bin_file("logo.png")
 st.markdown("""
 <style>
 
-.main {
-    background-color: #f0f2f5;
-}
-
 .block-container {
     padding-top: 1rem;
     padding-bottom: 2rem;
     max-width: 750px;
 }
 
-/* Logo */
 .logo-container{
     text-align:center;
     margin-top:30px;
@@ -33,11 +28,8 @@ st.markdown("""
 }
 .logo-container img{
     max-width:180px;
-    height:auto;
-    object-fit:contain;
 }
 
-/* Header */
 .title {
     text-align:center;
     color:#005aa2;
@@ -50,7 +42,6 @@ st.markdown("""
     margin-bottom:25px;
 }
 
-/* Card */
 .card{
     background:white;
     padding:25px;
@@ -59,17 +50,15 @@ st.markdown("""
     margin-bottom:20px;
 }
 
-/* Section header */
 .section{
     background:#eef7ff;
     padding:12px 15px;
-    border-radius:8px 8px 0 0;
+    border-radius:8px;
     color:#005aa2;
     font-weight:700;
     margin-top:20px;
 }
 
-/* Rows */
 .row{
     display:flex;
     justify-content:space-between;
@@ -78,27 +67,20 @@ st.markdown("""
     font-size:15px;
 }
 
-/* Solar rebate green */
 .green{
     color:#1a7f37;
     font-weight:600;
 }
-.green span{
-    color:#1a7f37;
-}
 
-/* Total */
 .total{
     background:#f2f2f2;
     padding:16px;
     border-radius:8px;
     font-size:24px;
     font-weight:800;
-    color:#000000;
     text-align:right;
 }
 
-/* Button */
 div.stButton > button {
     background-color:#005aa2;
     color:white;
@@ -107,9 +89,6 @@ div.stButton > button {
     border-radius:8px;
     height:50px;
     width:100%;
-}
-div.stButton > button:hover {
-    background-color:#00447a;
 }
 
 </style>
@@ -125,7 +104,7 @@ st.markdown(f"""
 <div class="subtitle">Mumbai Region Official Tariff</div>
 """, unsafe_allow_html=True)
 
-# ---------------- INPUT CARD ---------------- #
+# ---------------- INPUTS ---------------- #
 st.markdown('<div class="card">', unsafe_allow_html=True)
 
 network = st.selectbox(
@@ -133,8 +112,8 @@ network = st.selectbox(
     ["Welcome (AEML Network)", "Direct (Tata Power Network)"]
 )
 
-mu = st.number_input("Metered Units (Total MU)", min_value=0.0, step=1.0)
-su = st.number_input("Solar Hour Units (Direct Meter Reading)", min_value=0.0, step=1.0)
+mu = st.number_input("Metered Units (MU)", min_value=0.0, step=1.0)
+su = st.number_input("Solar Units (SU)", min_value=0.0, step=1.0)
 
 calculate = st.button("Calculate & Show Logic")
 
@@ -143,55 +122,80 @@ st.markdown('</div>', unsafe_allow_html=True)
 # ---------------- CALCULATION ---------------- #
 if calculate:
 
+    if su > mu:
+        st.error("Solar units cannot exceed Metered Units.")
+        st.stop()
+
     is_welcome = "Welcome" in network
 
-    # BU
+    # BU Conversion
     if is_welcome:
-        bu = round(mu * 1.0536)
-        note_bu = f"Calculation: {mu} MU × 1.0536 (Wheeling Loss) = {bu} BU"
+        bu = mu * 1.0536
+        note_bu = f"{mu:.2f} MU × 1.0536 (Wheeling Loss) = {bu:.2f} BU"
     else:
         bu = mu
-        note_bu = f"Direct Network: BU = MU = {mu}"
+        note_bu = f"Direct Network → BU = {bu:.2f}"
 
-    # Slabs
-    s1 = min(bu, 100) * 2.00
-    s2 = min(max(bu - 100, 0), 200) * 5.20
-    s3 = min(max(bu - 300, 0), 200) * 10.79
-    s4 = max(bu - 500, 0) * 11.79
+    # Slab Units
+    s1_units = min(bu, 100)
+    s2_units = min(max(bu - 100, 0), 200)
+    s3_units = min(max(bu - 300, 0), 200)
+    s4_units = max(bu - 500, 0)
+
+    # Tariff Rates
+    r1, r2, r3, r4 = 2.00, 5.20, 10.79, 11.79
+
+    # Slab Charges
+    s1 = s1_units * r1
+    s2 = s2_units * r2
+    s3 = s3_units * r3
+    s4 = s4_units * r4
+
     total_energy = s1 + s2 + s3 + s4
 
-    # Charges
+    # Other Charges
     wheeling = mu * 2.93
     solar_rebate = su * 0.50
 
-    if bu > 500:
-        fixed = 160
-    elif bu > 100:
+    if bu <= 100:
+        fixed = 90
+    elif bu <= 500:
         fixed = 135
     else:
-        fixed = 90
+        fixed = 160
 
-    duty_base = total_energy + wheeling + fixed - solar_rebate
+    duty_base = max(total_energy + wheeling + fixed - solar_rebate, 0)
     duty = duty_base * 0.16
+
     tose = bu * 0.3594
 
     total = total_energy + wheeling + fixed + duty + tose - solar_rebate
 
-    # ---------------- RESULT CARD ---------------- #
+    # ---------------- RESULTS ---------------- #
     st.markdown('<div class="card">', unsafe_allow_html=True)
 
     st.markdown('<div class="section">Step 1: Unit Conversion</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="row"><span>Billed Units (BU)</span><span>{bu}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>Billed Units (BU)</span><span>{bu:.2f}</span></div>', unsafe_allow_html=True)
     st.caption(note_bu)
 
     st.markdown('<div class="section">Step 2: Energy Charges</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="row"><span>0 - 100 Slab</span><span>₹{s1:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="row"><span>101 - 300 Slab</span><span>₹{s2:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="row"><span>301 - 500 Slab</span><span>₹{s3:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="row"><span>Above 500 Slab</span><span>₹{s4:.2f}</span></div>', unsafe_allow_html=True)
+
+    st.markdown(f'<div class="row"><span>0 – 100 Units @ ₹{r1}</span><span>₹{s1:.2f}</span></div>', unsafe_allow_html=True)
+    st.caption(f"{s1_units:.2f} × {r1} = ₹{s1:.2f}")
+
+    st.markdown(f'<div class="row"><span>100 – 300 Units @ ₹{r2}</span><span>₹{s2:.2f}</span></div>', unsafe_allow_html=True)
+    st.caption(f"{s2_units:.2f} × {r2} = ₹{s2:.2f}")
+
+    st.markdown(f'<div class="row"><span>300 – 500 Units @ ₹{r3}</span><span>₹{s3:.2f}</span></div>', unsafe_allow_html=True)
+    st.caption(f"{s3_units:.2f} × {r3} = ₹{s3:.2f}")
+
+    st.markdown(f'<div class="row"><span>Above 500 Units @ ₹{r4}</span><span>₹{s4:.2f}</span></div>', unsafe_allow_html=True)
+    st.caption(f"{s4_units:.2f} × {r4} = ₹{s4:.2f}")
+
     st.markdown(f'<div class="row"><strong>Total Energy</strong><strong>₹{total_energy:.2f}</strong></div>', unsafe_allow_html=True)
 
     st.markdown('<div class="section">Step 3: Other Charges</div>', unsafe_allow_html=True)
+
     st.markdown(f'<div class="row"><span>Wheeling Charges</span><span>₹{wheeling:.2f}</span></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="row green"><span>Solar Rebate</span><span>-₹{solar_rebate:.2f}</span></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="row"><span>Fixed Charges</span><span>₹{fixed:.2f}</span></div>', unsafe_allow_html=True)
