@@ -3,26 +3,26 @@ import base64
 
 st.set_page_config(page_title="Tata Power Bill Calculator", layout="centered")
 
-# ---------- LOAD LOGO SAFELY ----------
+# ---------- LOAD LOGO ----------
 def get_base64_of_bin_file(bin_file):
     with open(bin_file, "rb") as f:
         return base64.b64encode(f.read()).decode()
 
 logo_base64 = get_base64_of_bin_file("logo.png")
 
-# ---------------- PROFESSIONAL CORPORATE CSS ---------------- #
+# ---------------- MINIMAL NEUTRAL CSS ---------------- #
 st.markdown("""
 <style>
 
-/* App background – Tata Corporate Style */
-.stApp {
-    background: linear-gradient(135deg, #005aa2, #003b6f);
-}
-
-/* Center container */
+/* Remove Streamlit default padding excess */
 .block-container {
     max-width: 760px;
     padding-top: 10px;
+}
+
+/* Plain background */
+.stApp {
+    background-color: white;
 }
 
 /* Logo */
@@ -32,7 +32,7 @@ st.markdown("""
     margin-bottom: 10px;
 }
 .logo-container img {
-    max-width: 220px;
+    max-width: 200px;
     width: 100%;
     height: auto;
 }
@@ -40,87 +40,80 @@ st.markdown("""
 /* Titles */
 .title {
     text-align: center;
-    font-size: 30px;
-    font-weight: 800;
-    color: white;
+    font-size: 28px;
+    font-weight: 700;
+    color: black;
 }
 .subtitle {
     text-align: center;
     font-size: 14px;
-    color: rgba(255,255,255,0.85);
+    color: #555;
     margin-bottom: 20px;
 }
 
 /* Card */
 .card {
     background: white;
-    border-radius: 14px;
-    padding: 22px;
-    margin-bottom: 18px;
-    box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 16px;
+    border: 1px solid #dddddd;
 }
 
 /* Section headers */
 .section {
-    font-size: 16px;
-    font-weight: 700;
-    margin-top: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    margin-top: 10px;
     margin-bottom: 6px;
-    color: #005aa2;
 }
 
 /* Rows */
 .row {
     display: flex;
     justify-content: space-between;
-    padding: 9px 0;
-    font-size: 15px;
+    padding: 8px 0;
+    font-size: 14px;
     border-bottom: 1px solid #eeeeee;
 }
 
-/* Calculation text */
+/* Calculation logic text */
 .calc {
-    font-size: 13px;
+    font-size: 12px;
     color: #666;
     margin-bottom: 6px;
 }
 
-/* Solar rebate */
-.green {
-    color: #1a7f37;
-    font-weight: 600;
-}
-
 /* Total */
 .total {
-    background: #f4f6f8;
-    padding: 14px;
-    border-radius: 10px;
-    font-size: 24px;
-    font-weight: 800;
+    background: #f7f7f7;
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 20px;
+    font-weight: 700;
     text-align: right;
     margin-top: 10px;
+    border: 1px solid #dddddd;
 }
 
 /* Button */
 div.stButton > button {
-    background-color: #005aa2;
-    color: white;
-    font-size: 17px;
-    font-weight: 700;
-    border-radius: 10px;
-    height: 50px;
+    background-color: white;
+    color: black;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 4px;
+    height: 42px;
     width: 100%;
-    border: none;
-}
-div.stButton > button:hover {
-    background-color: #00447a;
+    border: 1px solid #cccccc;
 }
 
-/* Input labels */
+div.stButton > button:hover {
+    background-color: #f5f5f5;
+}
+
 label {
     font-weight: 600 !important;
-    color: #333 !important;
 }
 
 </style>
@@ -132,7 +125,7 @@ st.markdown(f"""
     <img src="data:image/png;base64,{logo_base64}">
 </div>
 <div class="title">TATA POWER BILL CALCULATOR</div>
-<div class="subtitle">Mumbai Region • Tariff Simulation</div>
+<div class="subtitle">Tariff Calculation Logic</div>
 """, unsafe_allow_html=True)
 
 # ---------------- INPUT CARD ---------------- #
@@ -161,12 +154,11 @@ if calculate:
 
     if is_welcome:
         bu = mu * 1.0536
-        bu_calc = f"{mu:.2f} × 1.0536 = {bu:.2f} BU (Loss Adjustment)"
+        bu_calc = f"{mu:.2f} × 1.0536 = {bu:.2f} BU"
     else:
         bu = mu
-        bu_calc = f"Direct Supply → BU = {bu:.2f}"
+        bu_calc = f"BU = {bu:.2f}"
 
-    # Slabs
     s1_units = min(bu, 100)
     s2_units = min(max(bu - 100, 0), 200)
     s3_units = min(max(bu - 300, 0), 200)
@@ -207,16 +199,16 @@ if calculate:
 
     st.markdown('<div class="section">Energy Charges</div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="row"><span>0 – 100 Units @ ₹{r1}</span><span>₹{s1:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>0 – 100 Units</span><span>₹{s1:.2f}</span></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="calc">{s1_units:.2f} × {r1}</div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="row"><span>100 – 300 Units @ ₹{r2}</span><span>₹{s2:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>100 – 300 Units</span><span>₹{s2:.2f}</span></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="calc">{s2_units:.2f} × {r2}</div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="row"><span>300 – 500 Units @ ₹{r3}</span><span>₹{s3:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>300 – 500 Units</span><span>₹{s3:.2f}</span></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="calc">{s3_units:.2f} × {r3}</div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="row"><span>Above 500 Units @ ₹{r4}</span><span>₹{s4:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>Above 500 Units</span><span>₹{s4:.2f}</span></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="calc">{s4_units:.2f} × {r4}</div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="row"><strong>Total Energy</strong><strong>₹{total_energy:.2f}</strong></div>', unsafe_allow_html=True)
@@ -226,12 +218,12 @@ if calculate:
     st.markdown(f'<div class="row"><span>Wheeling Charges</span><span>₹{wheeling:.2f}</span></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="calc">{mu:.2f} × 2.93</div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="row green"><span>Solar Rebate</span><span>-₹{solar_rebate:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>Solar Rebate</span><span>-₹{solar_rebate:.2f}</span></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="calc">{su:.2f} × 0.50</div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="row"><span>Fixed Charges</span><span>₹{fixed:.2f}</span></div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="row"><span>Electricity Duty (16%)</span><span>₹{duty:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>Electricity Duty</span><span>₹{duty:.2f}</span></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="calc">{duty_base:.2f} × 16%</div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="row"><span>TOSE</span><span>₹{tose:.2f}</span></div>', unsafe_allow_html=True)
