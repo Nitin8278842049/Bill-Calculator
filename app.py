@@ -27,7 +27,7 @@ st.markdown("""
 .row { display: flex; justify-content: space-between; padding: 8px; font-size: 14px; border: 1px solid #e6e6e6; margin-top: 4px; }
 .calc { font-size: 12px; color: #666; margin-left: 6px; margin-bottom: 6px; }
 .total { font-size: 22px; font-weight: 800; text-align: right; padding-top: 10px; color: #d32f2f; }
-.green { color: #1a7f37; font-weight: 600; }
+.penalty { color: #d32f2f; font-weight: 700; background-color: #ffebee; border: 1px solid #ffcdd2; }
 div.stButton > button { background-color: #005aa2; color: white; font-size: 16px; font-weight: 700; height: 45px; width: 100%; }
 label { font-weight: 600 !important; }
 </style>
@@ -41,17 +41,18 @@ st.markdown(f"""
     <img src="data:image/png;base64,{logo_base64}">
 </div>
 <div class="title">TATA POWER COMMERCIAL CALCULATOR</div>
-<div class="subtitle">LT-II (Non-Residential) Tariff Structure</div>
+<div class="subtitle">LT-II (Non-Residential) / Commercial Tariff</div>
 """, unsafe_allow_html=True)
 
 # ---------------- INPUTS ---------------- #
 st.markdown('<div class="card">', unsafe_allow_html=True)
 
-network = st.selectbox("Network Type", ["Direct (Tata Power Network)", "Welcome (AEML Network)"])
-mu_text = st.text_input("Metered Units (MU)", placeholder="Enter Total Units Consumed")
+network = st.selectbox("Network Type", ["Direct (Tata Power)", "Welcome (AEML Network)"])
+mu_text = st.text_input("Metered Units (MU)", placeholder="Enter Units Consumed")
 load_text = st.text_input("Sanctioned Load (kW)", placeholder="Enter Sanctioned Load")
+rmd_text = st.text_input("Recorded Max Demand (RMD in kW)", placeholder="Enter Actual RMD")
 
-calculate = st.button("Calculate Commercial Bill")
+calculate = st.button("Calculate Bill")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -60,13 +61,13 @@ if calculate:
     try:
         mu = float(mu_text)
         load_kw = float(load_text)
+        rmd = float(rmd_text)
     except:
-        st.error("Please enter valid numeric values.")
+        st.error("Please enter valid numeric values for all fields.")
         st.stop()
 
+    # Step 1: Unit Conversion (BU)
     is_welcome = "Welcome" in network
-    
-    # Unit Conversion for Welcome Users
     if is_welcome:
         bu = mu * 1.05785
         wheeling_rate = 2.93
@@ -76,56 +77,77 @@ if calculate:
         wheeling_rate = 2.76
         bu_calc = f"Calculation : BU = {round(bu)} BU"
 
-    # Commercial (LT-II) Energy Slabs (Approximate based on latest tariff)
-    # 0-500 Units and Above 500 Units
+    # Step 2: BMD Calculation (75% Rule)
+    # BMD is higher of RMD or 75% of Sanctioned Load
+    min_billing_demand = load_kw * 0.75
+    bmd = max(rmd, min_billing_demand)
+    
+    # Step 3: Energy Charges (Commercial LT-II Slabs)
+    # Rates: 0-500: ₹7.63, >500: ₹9.42 (Example Commercial Rates)
     s1_units = min(bu, 500)
     s2_units = max(bu - 500, 0)
-
-    r1, r2 = 7.63, 9.42  # Standard Commercial LT-II Rates
-
-    s1 = s1_units * r1
-    s2 = s2_units * r2
-    total_energy = s1 + s2
-
-    wheeling = mu * wheeling_rate
+    r1, r2 = 7.63, 9.42
     
-    # Fixed Charges for Commercial (Calculated per kW per month)
-    fixed_rate_per_kw = 470.00 
-    fixed = load_kw * fixed_rate_per_kw
+    s1_cost = s1_units * r1
+    s2_cost = s2_units * r2
+    total_energy = s1_cost + s2_cost
 
-    # Commercial Electricity Duty (21%) and TOSE (0.1916)
-    duty_base = total_energy + wheeling + fixed
+    # Step 4: Demand Charges & Penalty
+    demand_rate = 470.00 # Typical commercial demand rate
+    demand_charges = bmd * demand_rate
+    
+    penalty_charge = 0
+    if rmd > load_kw:
+        excess_demand = rmd - load_kw
+        # Penalty is usually charged on the excess demand at 150% of the normal rate
+        penalty_charge = excess_demand * (demand_rate * 1.5)
+
+    # Step 5: Other Charges & Taxes
+    wheeling = mu * wheeling_rate
+    tose = bu * 0.1916 # Commercial TOSE rate
+    
+    # Duty is usually 21% for commercial
+    duty_base = total_energy + wheeling + demand_charges + penalty_charge
     duty = duty_base * 0.21
-    tose = bu * 0.1916
+    
+    total_bill = duty_base + duty + tose
 
-    total = total_energy + wheeling + fixed + duty + tose
-
-    # ---------------- RESULTS ---------------- #
+    # ---------------- DISPLAY RESULTS ---------------- #
     st.markdown('<div class="card">', unsafe_allow_html=True)
 
-    st.markdown('<div class="section">Step 1 : Unit Conversion</div>', unsafe_allow_html=True)
+    # Unit Conversion Section
+    st.markdown('<div class="section">Step 1: Unit & Demand Analysis</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="row"><span>Billed Units (BU)</span><span><b>{round(bu)}</b></span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">{bu_calc}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>75% of Sanctioned Load</span><span>{min_billing_demand:.2f} kW</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>Recorded Demand (RMD)</span><span>{rmd:.2f} kW</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span><b>Billing Max Demand (BMD)</b></span><span><b>{bmd:.2f} kW</b></span></div>', unsafe_allow_html=True)
+    st.markdown('<div class="calc">BMD = Higher of RMD or 75% of Sanctioned Load</div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="section">Step 2 : Energy Charges (Commercial)</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="row"><span>0 – 500 Units (@ ₹{r1})</span><span>₹{s1:.2f}</span></div>', unsafe_allow_html=True)
+    # Energy Charges Section
+    st.markdown('<div class="section">Step 2: Energy Charges</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>0 – 500 Units (@ ₹{r1})</span><span>₹{s1_cost:.2f}</span></div>', unsafe_allow_html=True)
     if s2_units > 0:
-        st.markdown(f'<div class="row"><span>Above 500 Units (@ ₹{r2})</span><span>₹{s2:.2f}</span></div>', unsafe_allow_html=True)
-    
+        st.markdown(f'<div class="row"><span>Above 500 Units (@ ₹{r2})</span><span>₹{s2_cost:.2f}</span></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="row"><strong>Total Energy Charges</strong><strong>₹{total_energy:.2f}</strong></div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="section">Step 3 : Fixed & Statutory Charges</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="row"><span>Fixed Charges (@ ₹{fixed_rate_per_kw}/kW)</span><span>₹{fixed:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">Calculation : {load_kw} kW × {fixed_rate_per_kw}</div>', unsafe_allow_html=True)
+    # Demand & Penalty Section
+    st.markdown('<div class="section">Step 3: Demand & Fixed Charges</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>Demand Charges (@ ₹{demand_rate})</span><span>₹{demand_charges:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="calc">Calculation : {bmd:.2f} kW × ₹{demand_rate}</div>', unsafe_allow_html=True)
 
+    if penalty_charge > 0:
+        st.markdown(f'<div class="row penalty"><span>Demand Penalty (Excess Load)</span><span>₹{penalty_charge:.2f}</span></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="calc">Calculation : {rmd - load_kw:.2f} kW excess × ₹{demand_rate * 1.5}</div>', unsafe_allow_html=True)
+
+    # Statutory Section
+    st.markdown('<div class="section">Step 4: Statutory Charges</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="row"><span>Wheeling Charges</span><span>₹{wheeling:.2f}</span></div>', unsafe_allow_html=True)
-    
     st.markdown(f'<div class="row"><span>Electricity Duty (21%)</span><span>₹{duty:.2f}</span></div>', unsafe_allow_html=True)
-    
     st.markdown(f'<div class="row"><span>TOSE (@ ₹0.1916)</span><span>₹{tose:.2f}</span></div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="total">Net Commercial Bill : ₹{round(total):,}</div>', unsafe_allow_html=True)
-    st.caption("Note: This is an estimate. Actual bills include FAC and Tax on Sale adjustments.")
+    # Final Total
+    st.markdown(f'<div class="total">Net Bill Amount : ₹{round(total_bill):,}</div>', unsafe_allow_html=True)
+    st.caption("Disclaimer: This is an estimation based on standard LT-II Commercial tariff rules.")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
