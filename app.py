@@ -1,5 +1,6 @@
 import streamlit as st
 import base64
+import math
 
 st.set_page_config(page_title="Tata Power Bill Calculator", layout="centered")
 
@@ -79,7 +80,7 @@ if calculate:
         st.error("Solar units cannot exceed BU.")
         st.stop()
 
-    # -------- SLABS --------
+    # -------- ENERGY SLABS --------
     s1_units = min(bu, 100)
     s2_units = min(max(bu - 100, 0), 200)
     s3_units = min(max(bu - 300, 0), 200)
@@ -94,9 +95,11 @@ if calculate:
 
     total_energy = s1 + s2 + s3 + s4
 
+    # -------- OTHER CHARGES --------
     wheeling = mu * wheeling_rate
     solar_rebate = su * 0.50
 
+    # -------- FIXED CHARGES --------
     if bu <= 100:
         fixed = 90
     elif bu <= 500:
@@ -104,58 +107,66 @@ if calculate:
     else:
         fixed = 160
 
-    additional_fixed = 250 if load_kw > 10 else 0
+    if load_kw > 10:
+        load_above_10 = load_kw - 10
+        additional_units = math.ceil(load_above_10 / 10)
+        additional_fixed = additional_units * 250
+    else:
+        load_above_10 = 0
+        additional_units = 0
+        additional_fixed = 0
 
-    duty_base = max(total_energy + wheeling + fixed + additional_fixed - solar_rebate, 0)
+    total_fixed = fixed + additional_fixed
+
+    # -------- DUTY & TOSE --------
+    duty_base = max(total_energy + wheeling + total_fixed - solar_rebate, 0)
     duty = duty_base * 0.16
-
     tose = bu * 0.3594
 
-    total = total_energy + wheeling + fixed + additional_fixed + duty + tose - solar_rebate
+    total = total_energy + wheeling + total_fixed + duty + tose - solar_rebate
 
     # ---------------- RESULTS ---------------- #
     st.markdown('<div class="card">', unsafe_allow_html=True)
 
+    # Step 1
     st.markdown('<div class="section">Step 1 : Unit Conversion</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="row"><span>Billed Units (BU)</span><span><b>{round(bu)}</b></span></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="calc">{bu_calc}</div>', unsafe_allow_html=True)
 
+    # Step 2
     st.markdown('<div class="section">Step 2 : Energy Charges</div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="row"><span>0 – 100 Units (@ ₹2.00)</span><span>₹{s1:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">Calculation : {round(s1_units)} × 2.00 = ₹{s1:.2f}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="calc">{round(s1_units)} × 2.00 = ₹{s1:.2f}</div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="row"><span>101 – 300 Units (@ ₹5.20)</span><span>₹{s2:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">Calculation : {round(s2_units)} × 5.20 = ₹{s2:.2f}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="calc">{round(s2_units)} × 5.20 = ₹{s2:.2f}</div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="row"><span>301 – 500 Units (@ ₹10.79)</span><span>₹{s3:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">Calculation : {round(s3_units)} × 10.79 = ₹{s3:.2f}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="calc">{round(s3_units)} × 10.79 = ₹{s3:.2f}</div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="row"><span>Above 500 Units (@ ₹11.79)</span><span>₹{s4:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">Calculation : {round(s4_units)} × 11.79 = ₹{s4:.2f}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="calc">{round(s4_units)} × 11.79 = ₹{s4:.2f}</div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="row"><strong>Total Energy Charges</strong><strong>₹{total_energy:.2f}</strong></div>', unsafe_allow_html=True)
 
+    # Step 3
     st.markdown('<div class="section">Step 3 : Other Charges</div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="row"><span>Wheeling Charges (@ ₹{wheeling_rate})</span><span>₹{wheeling:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">Calculation : {mu} × {wheeling_rate} = ₹{wheeling:.2f}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>Wheeling Charges</span><span>₹{wheeling:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="calc">{mu} × {wheeling_rate} = ₹{wheeling:.2f}</div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="row"><span>Fixed Charges</span><span>₹{fixed:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">Calculation : Based on BU slab = ₹{fixed:.2f}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>Base Fixed Charges</span><span>₹{fixed:.2f}</span></div>', unsafe_allow_html=True)
 
     if additional_fixed:
-        st.markdown(f'<div class="row"><span>Additional Fixed Charges</span><span>₹250.00</span></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="calc">Calculation : Load > 10 kW → ₹250</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="row"><span>Additional Fixed Charges</span><span>₹{additional_fixed:.2f}</span></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="calc">({load_kw} − 10 = {load_above_10:.2f} kW) → {additional_units} × 250 = ₹{additional_fixed:.2f}</div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="row green"><span>Solar Rebate</span><span>-₹{solar_rebate:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">Calculation : {su} × 0.50 = ₹{solar_rebate:.2f}</div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="row"><span>Electricity Duty (16%)</span><span>₹{duty:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">Calculation : ({total_energy:.2f} + {wheeling:.2f} + {fixed:.2f} + {additional_fixed:.2f} - {solar_rebate:.2f}) × 16% = ₹{duty:.2f}</div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="row"><span>TOSE</span><span>₹{tose:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">Calculation : {round(bu)} × 0.3594 = ₹{tose:.2f}</div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="total">Net Bill Amount : ₹{round(total):,}</div>', unsafe_allow_html=True)
 
