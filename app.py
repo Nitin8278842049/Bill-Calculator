@@ -68,9 +68,11 @@ st.markdown(f"""
 
 # ---------------- INPUTS ---------------- #
 network = st.selectbox("Network Type", ["Welcome (AEML Network)", "Direct (Tata Power Network)"])
-mu = st.number_input("Metered Units (MU)", min_value=0.0)
-su = st.number_input("Solar Units (BU)", min_value=0.0)
-load_kw = st.number_input("Sanctioned Load (kW)", min_value=0.0)
+
+# Integer-only inputs — no decimals
+mu = st.number_input("Metered Units (MU)", min_value=0, step=1, format="%d")
+su = st.number_input("Solar Units (BU)", min_value=0, step=1, format="%d")
+load_kw = st.number_input("Sanctioned Load (kW)", min_value=0, step=1, format="%d")
 
 if st.button("Calculate"):
 
@@ -134,7 +136,7 @@ if st.button("Calculate"):
 
     wheeling = mu * wheeling_rate
     st.markdown(f'<div class="row"><span>Wheeling Charges (MU) @ ₹{wheeling_rate}</span><span>₹{wheeling:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">Calculation : {mu:.0f} (MU) × {wheeling_rate} = ₹{wheeling:.2f}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="calc">Calculation : {mu} (MU) × {wheeling_rate} = ₹{wheeling:.2f}</div>', unsafe_allow_html=True)
 
     # -------- FIXED CHARGES --------
     base_fixed = 160
@@ -154,11 +156,11 @@ if st.button("Calculate"):
 
     if additional > 0:
         st.markdown(f'<div class="row"><span>Additional Fixed Charges (Load Based)</span><span>₹{additional}</span></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="calc">Calculation : ({load_kw} − 10 = {load_above:.0f}) ÷ 10 → {blocks} × 250 = ₹{additional}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="calc">Calculation : ({load_kw} − 10 = {load_above}) ÷ 10 → {blocks} × 250 = ₹{additional}</div>', unsafe_allow_html=True)
 
     solar_rebate = su * 0.50
     st.markdown(f'<div class="row green"><span>Solar Rebate (BU)</span><span>-₹{solar_rebate:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">Calculation : {su:.0f} (BU) × 0.50 = ₹{solar_rebate:.2f}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="calc">Calculation : {su} (BU) × 0.50 = ₹{solar_rebate:.2f}</div>', unsafe_allow_html=True)
 
     duty_base = total_energy + wheeling + total_fixed - solar_rebate
     duty = duty_base * 0.16
