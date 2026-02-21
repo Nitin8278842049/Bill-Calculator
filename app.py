@@ -1,111 +1,153 @@
 import streamlit as st
+import base64
 
-# --- Configuration ---
-st.set_page_config(page_title="Mumbai Bill Pro 2026", page_icon="⚡")
+st.set_page_config(page_title="Mumbai Bill Calculator 2026", layout="centered")
 
-# --- UI Header ---
-st.title("⚡ Mumbai Electricity Calculator (2025-26)")
+# ---------- LOAD LOGO ----------
+def get_base64_of_bin_file(bin_file):
+    try:
+        with open(bin_file, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    except: return ""
+
+logo_base64 = get_base64_of_bin_file("logo.png")
+
+# ---------------- CSS (Updated for Red Highlights) ---------------- #
 st.markdown("""
-This calculator uses the **MERC 5th Control Period (FY 2025-26)** tariff orders. 
-*Updated: February 2026*
-""")
+<style>
+.main-container { border: 2px solid #005aa2; padding: 20px; border-radius: 8px; }
+.stApp { background-color: white; }
+.logo-container { text-align: center; margin-bottom: 5px; }
+.logo-container img { max-width: 160px; }
+.title { text-align: center; color: #005aa2; font-size: 28px; font-weight: 800; }
+.subtitle { text-align: center; color: #555; font-size: 14px; margin-bottom: 15px; }
+.card { background: white; padding: 18px; border-radius: 6px; border: 1px solid #dcdcdc; margin-bottom: 15px; }
+.section { background: #eef7ff; padding: 8px; border-radius: 4px; font-weight: 700; color: #005aa2; margin-top: 10px; border: 1px solid #d0e7ff; }
+.row { display: flex; justify-content: space-between; padding: 8px; font-size: 14px; border: 1px solid #e6e6e6; margin-top: 4px; }
+.calc { font-size: 12px; color: #666; margin-left: 6px; margin-bottom: 6px; }
+.total { font-size: 22px; font-weight: 800; text-align: right; padding-top: 10px; }
+.green { color: #1a7f37; font-weight: 600; }
+/* Red Highlight for Adani Selection */
+.adani-highlight { color: #d73a49; font-weight: 700; }
+div.stButton > button { background-color: #005aa2; color: white; font-size: 16px; font-weight: 700; height: 45px; width: 100%; }
+label { font-weight: 600 !important; }
+</style>
+""", unsafe_allow_html=True)
 
-# --- Sidebar Inputs ---
-with st.sidebar:
-    st.header("Billing Details")
-    provider = st.selectbox("Utility Provider", ["Adani Electricity", "Tata Power (Direct)"])
-    units = st.number_input("Monthly Units (kWh)", min_value=0, value=250, step=10)
-    phase = st.radio("Connection Type", ["Single Phase", "Three Phase"])
-    # Monthly variable: PPCA (Fuel adjustment)
-    ppca_rate = st.slider("Current PPCA (₹/unit)", 0.0, 2.0, 0.45, help="Check your latest bill for the month's PPCA rate.")
+st.markdown('<div class="main-container">', unsafe_allow_html=True)
 
-# --- Data Store (Sourced from Case No 210 & 211 of 2024) ---
-# Rates effective April 1, 2025 - March 31, 2026
-TARIFF_DATA = {
-    "Adani Electricity": {
-        "slabs": [(100, 3.45), (300, 6.70), (500, 8.10), (float('inf'), 9.05)],
-        "wheeling": 2.93,
-        "fixed_single": {100: 90, 300: 135, 500: 135, 1000: 160},
-        "fixed_three": 160,
-        "tax_on_sale": 0.2604
-    },
-    "Tata Power (Direct)": {
-        "slabs": [(100, 2.02), (300, 5.35), (500, 10.04), (float('inf'), 11.25)],
-        "wheeling": 1.82,
-        "fixed_single": {100: 90, 300: 135, 500: 135, 1000: 160},
-        "fixed_three": 160,
-        "tax_on_sale": 0.2604
-    }
-}
-
-# --- Calculation Engine ---
-def run_calculation(units, provider, phase, ppca):
-    data = TARIFF_DATA[provider]
-    
-    # 1. Fixed Charges
-    if phase == "Three Phase":
-        fixed = data["fixed_three"]
-    else:
-        if units <= 100: fixed = data["fixed_single"][100]
-        elif units <= 500: fixed = data["fixed_single"][300]
-        else: fixed = data["fixed_single"][1000]
-
-    # 2. Energy Charges (Slab Logic)
-    energy_total = 0
-    rem_units = units
-    prev_limit = 0
-    slab_breakdown = []
-    
-    for limit, rate in data["slabs"]:
-        if rem_units > 0:
-            units_in_slab = min(rem_units, limit - prev_limit)
-            cost = units_in_slab * rate
-            energy_total += cost
-            slab_breakdown.append({"Slab": f"{prev_limit}-{limit if limit != float('inf') else '+'}", "Units": units_in_slab, "Rate": rate, "Cost": cost})
-            rem_units -= units_in_slab
-            prev_limit = limit
-
-    # 3. Wheeling & PPCA
-    wheeling = units * data["wheeling"]
-    ppca_total = units * ppca
-    
-    # 4. Regulatory Taxes
-    v_subtotal = fixed + energy_total + wheeling + ppca_total
-    elec_duty = v_subtotal * 0.16  # 16% for Residential
-    tax_on_sale = units * data["tax_on_sale"]
-    
-    total = v_subtotal + elec_duty + tax_on_sale
-    
-    return {
-        "Fixed": fixed, "Energy": energy_total, "Wheeling": wheeling,
-        "PPCA": ppca_total, "Duty": elec_duty, "TaxSale": tax_on_sale,
-        "Total": total, "Slabs": slab_breakdown
-    }
-
-# --- Display Results ---
-res = run_calculation(units, provider, phase, ppca_rate)
-
-# Top Metrics
-c1, c2, c3 = st.columns(3)
-c1.metric("Total Bill", f"₹{res['Total']:,.2f}")
-c2.metric("Avg Rate/Unit", f"₹{res['Total']/max(units,1):.2f}")
-c3.metric("Tax %", "16% + ToS")
-
-# Detailed Table
-st.subheader("Calculation Breakdown")
-with st.expander("View Slab-wise Energy Details"):
-    st.table(res["Slabs"])
-
+# ---------------- HEADER ---------------- #
 st.markdown(f"""
-| Component | Amount (INR) |
-| :--- | :--- |
-| **Fixed/Demand Charges** | ₹{res['Fixed']:.2f} |
-| **Energy Charges (Base)** | ₹{res['Energy']:.2f} |
-| **Wheeling Charges** | ₹{res['Wheeling']:.2f} |
-| **PPCA (Fuel Adjustment)** | ₹{res['PPCA']:.2f} |
-| **Electricity Duty (16%)** | ₹{res['Duty']:.2f} |
-| **Tax on Sale** | ₹{res['TaxSale']:.2f} |
-| **Grand Total** | **₹{res['Total']:,.2f}** |
-""")
+<div class="logo-container">
+    <img src="data:image/png;base64,{logo_base64}">
+</div>
+<div class="title">MUMBAI POWER BILL CALCULATOR</div>
+<div class="subtitle">Adani & Tata Power | 2025-26 Tariff Cycle</div>
+""", unsafe_allow_html=True)
 
-st.warning("**Note:** Adani rates for 301-500 units have increased slightly in the 2026 cycle to ₹8.10. Ensure your consumption is optimized!")
+# ---------------- INPUTS ---------------- #
+st.markdown('<div class="card">', unsafe_allow_html=True)
+
+network = st.selectbox("Select Supply/Network Type", 
+    ["Welcome (AEML Network)", "Direct (Tata Power Network)", "Adani Direct Supply"])
+
+mu_text = st.text_input("Metered Units (MU)", placeholder="Enter Metered Units")
+su_text = st.text_input("Solar Units (BU)", value="0", placeholder="Enter Solar Units")
+load_text = st.text_input("Sanctioned Load (kW)", placeholder="Enter Load")
+
+calculate = st.button("Calculate Bill")
+
+st.markdown('</div>', unsafe_allow_html=True)
+
+# ---------------- CALCULATIONS ---------------- #
+if calculate:
+    try:
+        mu = float(mu_text)
+        su = float(su_text)
+        load_kw = float(load_text)
+    except:
+        st.error("Please enter valid numeric values.")
+        st.stop()
+
+    # --- TARIFF LOGIC 2025-2026 ---
+    is_welcome = "Welcome" in network
+    is_adani = "Adani" in network and "Direct" in network
+
+    if is_welcome:
+        bu = mu * 1.05785 # Loss adjustment
+        wheeling_rate = 2.93
+        r1, r2, r3, r4 = 2.00, 5.20, 10.79, 11.79
+        ppca = 0.85 # Avg PPCA for Tata
+        bu_calc = f"Calculation : BU = {mu} × 1.05785 = {round(bu)} BU"
+    elif is_adani:
+        bu = mu
+        wheeling_rate = 2.93
+        # Adani 2025-26 Residential Rates
+        r1, r2, r3, r4 = 3.45, 6.70, 8.10, 9.05
+        ppca = 1.25 # Avg PPCA for Adani
+        bu_calc = f"Calculation : BU = {round(bu)} BU"
+    else: # Tata Direct
+        bu = mu
+        wheeling_rate = 1.82 
+        r1, r2, r3, r4 = 2.02, 5.35, 10.04, 11.25
+        ppca = 0.85
+        bu_calc = f"Calculation : BU = {round(bu)} BU"
+
+    # --- Energy Slabs ---
+    s1_units = min(bu, 100)
+    s2_units = min(max(bu - 100, 0), 200)
+    s3_units = min(max(bu - 300, 0), 200)
+    s4_units = max(bu - 500, 0)
+
+    s1, s2, s3, s4 = s1_units * r1, s2_units * r2, s3_units * r3, s4_units * r4
+    total_energy = s1 + s2 + s3 + s4
+    wheeling = mu * wheeling_rate
+    solar_rebate = su * 0.50
+
+    # --- Fixed Charges ---
+    if bu <= 100: fixed = 90
+    elif bu <= 500: fixed = 135
+    else: fixed = 160
+
+    # Three-phase or High Load Adjustment
+    additional_fixed = 250 if load_kw > 10 else 0
+    ppca_total = bu * ppca
+    
+    # --- Taxes ---
+    # Duty is 16% on (Energy + Wheeling + Fixed + PPCA - Solar Rebate)
+    duty_base = max(total_energy + wheeling + fixed + additional_fixed + ppca_total - solar_rebate, 0)
+    duty = duty_base * 0.16
+    tose = bu * 0.2604 # Tax on Sale of Electricity
+
+    total_bill = duty_base + duty + tose
+
+    # ---------------- RESULTS ---------------- #
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    
+    title_color = "adani-highlight" if is_adani else ""
+    st.markdown(f'<div class="section">Step 1 : Unit Conversion <span class="{title_color}">({network})</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>Billed Units (BU)</span><span><b>{round(bu)}</b></span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="calc">{bu_calc}</div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="section">Step 2 : Energy Charges (Slab-wise)</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>0 – 100 (@ ₹{r1})</span><span>₹{s1:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>101 – 300 (@ ₹{r2})</span><span>₹{s2:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>301 – 500 (@ ₹{r3})</span><span>₹{s3:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>Above 500 (@ ₹{r4})</span><span>₹{s4:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><strong>Total Energy</strong><strong>₹{total_energy:.2f}</strong></div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="section">Step 3 : Fixed & Regulatory Charges</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>Wheeling Charges (@ ₹{wheeling_rate})</span><span>₹{wheeling:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>Fixed Charges</span><span>₹{fixed + additional_fixed:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>PPCA (Estimated)</span><span>₹{ppca_total:.2f}</span></div>', unsafe_allow_html=True)
+    
+    if su > 0:
+        st.markdown(f'<div class="row green"><span>Solar Rebate</span><span>-₹{solar_rebate:.2f}</span></div>', unsafe_allow_html=True)
+
+    st.markdown(f'<div class="row"><span>Electricity Duty (16%)</span><span>₹{duty:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>TOSE (@ ₹0.2604)</span><span>₹{tose:.2f}</span></div>', unsafe_allow_html=True)
+
+    st.markdown(f'<div class="total">Net Payable : ₹{round(total_bill):,}</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown('</div>', unsafe_allow_html=True)
