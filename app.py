@@ -46,9 +46,9 @@ st.markdown(f"""
 st.markdown('<div class="card">', unsafe_allow_html=True)
 
 network = st.selectbox("Network Type", ["Welcome (AEML Network)", "Direct (Tata Power Network)"])
-mu_text = st.text_input("Metered Units (MU)", placeholder="Enter Metered Units")
-su_text = st.text_input("Solar Units (BU)", placeholder="Enter Solar Units")
-load_text = st.text_input("Sanctioned Load (kW)", placeholder="Enter Load")
+mu_text = st.text_input("Metered Units (MU)")
+su_text = st.text_input("Solar Units (BU)")
+load_text = st.text_input("Sanctioned Load (kW)")
 
 calculate = st.button("Calculate")
 
@@ -65,108 +65,82 @@ if calculate:
         st.error("Please enter valid numeric values.")
         st.stop()
 
-    is_welcome = "Welcome" in network
-
-    if is_welcome:
+    # -------- BU Calculation --------
+    if "Welcome" in network:
         bu = mu * 1.05785
         wheeling_rate = 2.93
-        bu_calc = f"Calculation : BU = {mu} × 1.05785 = {round(bu)} BU"
     else:
         bu = mu
         wheeling_rate = 2.76
-        bu_calc = f"Calculation : BU = {round(bu)} BU"
 
     if su > bu:
         st.error("Solar units cannot exceed BU.")
         st.stop()
 
-    # -------- ENERGY SLABS --------
-    s1_units = min(bu, 100)
-    s2_units = min(max(bu - 100, 0), 200)
-    s3_units = min(max(bu - 300, 0), 200)
-    s4_units = max(bu - 500, 0)
-
-    r1, r2, r3, r4 = 2.00, 5.20, 10.79, 11.79
-
-    s1 = s1_units * r1
-    s2 = s2_units * r2
-    s3 = s3_units * r3
-    s4 = s4_units * r4
+    # -------- Energy Slabs --------
+    s1 = min(bu, 100) * 2.00
+    s2 = min(max(bu - 100, 0), 200) * 5.20
+    s3 = min(max(bu - 300, 0), 200) * 10.79
+    s4 = max(bu - 500, 0) * 11.79
 
     total_energy = s1 + s2 + s3 + s4
 
-    # -------- OTHER CHARGES --------
+    # -------- Wheeling --------
     wheeling = mu * wheeling_rate
-    solar_rebate = su * 0.50
 
-    # -------- FIXED CHARGES --------
-    if bu <= 100:
-        fixed = 90
-    elif bu <= 500:
-        fixed = 135
-    else:
-        fixed = 160
+    # ======================================================
+    # ✅ CORRECT SANCTIONED LOAD FIXED CHARGE LOGIC
+    # ======================================================
+
+    # Base Fixed Charge (3-Phase Residential)
+    base_fixed = 160
 
     if load_kw > 10:
         load_above_10 = load_kw - 10
-        additional_units = math.ceil(load_above_10 / 10)
-        additional_fixed = additional_units * 250
+        units_of_10kw = math.ceil(load_above_10 / 10)
+        additional_fixed = units_of_10kw * 250
     else:
         load_above_10 = 0
-        additional_units = 0
+        units_of_10kw = 0
         additional_fixed = 0
 
-    total_fixed = fixed + additional_fixed
+    total_fixed = base_fixed + additional_fixed
 
-    # -------- DUTY & TOSE --------
+    # -------- Solar Rebate --------
+    solar_rebate = su * 0.50
+
+    # -------- Duty --------
     duty_base = max(total_energy + wheeling + total_fixed - solar_rebate, 0)
     duty = duty_base * 0.16
+
+    # -------- TOSE --------
     tose = bu * 0.3594
 
+    # -------- Final Total --------
     total = total_energy + wheeling + total_fixed + duty + tose - solar_rebate
 
-    # ---------------- RESULTS ---------------- #
+    # ================= RESULTS =================
     st.markdown('<div class="card">', unsafe_allow_html=True)
 
-    # Step 1
-    st.markdown('<div class="section">Step 1 : Unit Conversion</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="row"><span>Billed Units (BU)</span><span><b>{round(bu)}</b></span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">{bu_calc}</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section">Fixed Charge Detailed Calculation</div>', unsafe_allow_html=True)
 
-    # Step 2
-    st.markdown('<div class="section">Step 2 : Energy Charges</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>Base Fixed (3-Phase)</span><span>₹{base_fixed}</span></div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="row"><span>0 – 100 Units (@ ₹2.00)</span><span>₹{s1:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">{round(s1_units)} × 2.00 = ₹{s1:.2f}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>Load Above 10 kW</span><span>{load_above_10:.2f} kW</span></div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="row"><span>101 – 300 Units (@ ₹5.20)</span><span>₹{s2:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">{round(s2_units)} × 5.20 = ₹{s2:.2f}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>Units of 10 kW</span><span>{units_of_10kw}</span></div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="row"><span>301 – 500 Units (@ ₹10.79)</span><span>₹{s3:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">{round(s3_units)} × 10.79 = ₹{s3:.2f}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><span>Additional Fixed</span><span>₹{additional_fixed}</span></div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="row"><span>Above 500 Units (@ ₹11.79)</span><span>₹{s4:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">{round(s4_units)} × 11.79 = ₹{s4:.2f}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row"><strong>Total Fixed Charges</strong><strong>₹{total_fixed}</strong></div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="row"><strong>Total Energy Charges</strong><strong>₹{total_energy:.2f}</strong></div>', unsafe_allow_html=True)
+    st.markdown('<div class="section">Final Bill</div>', unsafe_allow_html=True)
 
-    # Step 3
-    st.markdown('<div class="section">Step 3 : Other Charges</div>', unsafe_allow_html=True)
-
+    st.markdown(f'<div class="row"><span>Energy Charges</span><span>₹{total_energy:.2f}</span></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="row"><span>Wheeling Charges</span><span>₹{wheeling:.2f}</span></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="calc">{mu} × {wheeling_rate} = ₹{wheeling:.2f}</div>', unsafe_allow_html=True)
-
-    st.markdown(f'<div class="row"><span>Base Fixed Charges</span><span>₹{fixed:.2f}</span></div>', unsafe_allow_html=True)
-
-    if additional_fixed:
-        st.markdown(f'<div class="row"><span>Additional Fixed Charges</span><span>₹{additional_fixed:.2f}</span></div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="calc">({load_kw} − 10 = {load_above_10:.2f} kW) → {additional_units} × 250 = ₹{additional_fixed:.2f}</div>', unsafe_allow_html=True)
-
-    st.markdown(f'<div class="row green"><span>Solar Rebate</span><span>-₹{solar_rebate:.2f}</span></div>', unsafe_allow_html=True)
-
     st.markdown(f'<div class="row"><span>Electricity Duty (16%)</span><span>₹{duty:.2f}</span></div>', unsafe_allow_html=True)
-
     st.markdown(f'<div class="row"><span>TOSE</span><span>₹{tose:.2f}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="row green"><span>Solar Rebate</span><span>-₹{solar_rebate:.2f}</span></div>', unsafe_allow_html=True)
 
     st.markdown(f'<div class="total">Net Bill Amount : ₹{round(total):,}</div>', unsafe_allow_html=True)
 
