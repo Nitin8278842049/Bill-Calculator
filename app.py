@@ -131,23 +131,23 @@ if submit or st.session_state.get('calculated', False):
     st.markdown("### 🔍 Detailed Calculation Breakdown")
     
 
-    with st.expander("📊 1. Consumption Units", expanded=True):
+    with st.expander("📊 1. Consumption Units", expanded=False):
         render_clickable_item("bu", "Billed Units (BU)", f"{mu_in} MU + 5.36% Loss" if is_welcome else f"{mu_in} MU Direct", bu, "Units used for Energy Charge and TOSE. AEML network adds 5.36% transmission loss, Tata Power- 0%.", is_unit=True)
 
-    with st.expander("💸 2. Energy Slabs", expanded=True):
+    with st.expander("💸 2. Energy Slabs", expanded=False):
         render_clickable_item("s1", "Slab 1 (0-100)", f"{s1} U x ₹{s[0]}", c1, "Rate for the first 100 units.")
         if s2 > 0: render_clickable_item("s2", "Slab 2 (101-300)", f"{s2} U x ₹{s[1]}", c2, "Rate for units 101 to 300.")
         if s3 > 0: render_clickable_item("s3", "Slab 3 (301-500)", f"{s3} U x ₹{s[2]}", c3, "Rate for units 301 to 500.")
         if s4 > 0: render_clickable_item("s4", "Slab 4 (>500)", f"{s4} U x ₹{s[3]}", c4, "Rate for units exceeding 500.")
         st.markdown(f'<div class="subtotal-row"><span>Energy Subtotal</span><span>₹{e_total:,.2f}</span></div>', unsafe_allow_html=True)
 
-    with st.expander("🏛️ 3. Fixed & Gov Charges", expanded=True):
+    with st.expander("🏛️ 3. Fixed & Gov Charges", expanded=False):
         render_clickable_item("fix", "Fixed Charges", f"Base ₹{fixed_base} + Load ₹{add_load}", fixed_grand, "Fixed Monthly charge based on your load and consumption slab,along with an additional Rs.250,is payable for every 10KW above the sanctioned load.")
         render_clickable_item("wh", "Wheeling Charges", f"{mu_in} MU x ₹{w_rate}", wheeling, "Wheeling Charges are the fees for using the power network to supply electricity to you.")
         render_clickable_item("ts", "Tax on Sale (TOSE)", f"{bu} BU x ₹0.3594", tose, "Tax on Sale of Electricity means a government tax charged on the electricity you consume.")
         render_clickable_item("ed", "Electricity Duty", "16% of Net Total", duty, "16% tax applied on (Energy + Fixed + Wheeling - Solar) Electricity Duty is a State Government tax charged on the electricity consumed.")
 
-    with st.expander("🌞 4. Green Credits", expanded=True):
+    with st.expander("🌞 4. Green Credits", expanded=False):
         render_clickable_item("sol", "Solar Rebate", f"{su_in} U x ₹{rates['solar_rebate']}", solar_rebate, "Rebate is given for consuming solar power during 09:00-17:00.", is_solar=True)
 
     # Final Amount Card
@@ -155,7 +155,7 @@ if submit or st.session_state.get('calculated', False):
     <div class="compact-final">
         <div class="final-flex">
             <div>
-                <div style="font-size:12px; font-weight:700; opacity:0.8; letter-spacing:1px;">TOTAL PAYABLE AMOUNT</div>
+                <div style="font-size:12px; font-weight:700; opacity:0.8; letter-spacing:1px;">APPROX. PAYABLE AMOUNT</div>
                 <div style="font-size:10px; opacity:0.7;">Tariff Year: {fy_str}</div>
             </div>
             <div class="final-amt">₹{round(total_bill):,}</div>
