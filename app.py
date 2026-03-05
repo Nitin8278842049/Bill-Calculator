@@ -45,7 +45,7 @@ st.markdown(f"""
 # ---------------- HEADER ---------------- #
 if logo_base64:
     st.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{logo_base64}" width="180"></div>', unsafe_allow_html=True)
-st.markdown('<div class="title-text">Tata Power Bill Estimator - Mumbai</div>', unsafe_allow_html=True)
+st.markdown('<div class="title-text">Tata Power Bill Calculator - Mumbai Region</div>', unsafe_allow_html=True)
 
 # ---------------- INPUT FORM ---------------- #
 st.markdown("##### 📅 1. Period & Connection")
